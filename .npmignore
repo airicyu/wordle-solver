@@ -1,0 +1,7 @@
+.git
+.vscode
+samples
+tests
+coverage
+jest.config.js
+images
