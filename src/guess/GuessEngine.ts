@@ -14,9 +14,11 @@ export class GuessEngine {
   private wordLength: number;
   private guessResultEvaluator: GuessResultEvaluator;
   private guessRecords: GuessRecord[] = [];
+  private remainWords: Word[];
 
   constructor(dictionary: Word[], wordLength: number, guessResultEvaluator: GuessResultEvaluator) {
     this.dictionary = dictionary;
+    this.remainWords = dictionary;
     this.wordLength = wordLength;
     this.guessResultEvaluator = guessResultEvaluator;
   }
@@ -31,11 +33,11 @@ export class GuessEngine {
     let guessWord = null;
     let guessResult = null;
 
-    let remainWords = new MatchGuessStrategy(this.dictionary).suggestGuess(wordInfo);
-    let remainWordsScoreMap = getCharScoreMap(remainWords);
+    this.remainWords = new MatchGuessStrategy(this.remainWords).suggestGuess(wordInfo);
+    let remainWordsScoreMap = getCharScoreMap(this.remainWords);
 
-    let aggressiveCandidates = new AggressiveExpandCharGuessStrategy(this.dictionary, remainWordsScoreMap).suggestGuess(wordInfo);
-    let expandCandidates = new ExpandCharGuessStrategy(this.dictionary, remainWordsScoreMap).suggestGuess(wordInfo);
+    // let aggressiveCandidates = new AggressiveExpandCharGuessStrategy(this.dictionary, remainWordsScoreMap).suggestGuess(wordInfo);
+    let distinctCandidates = new DistinctCharGuessStrategy(this.dictionary, remainWordsScoreMap).suggestGuess(wordInfo);
     let matchCandidates = new MatchGuessStrategy(this.dictionary, remainWordsScoreMap).suggestGuess(wordInfo);
 
     if (trial == 1) {
@@ -44,40 +46,54 @@ export class GuessEngine {
     } else if (wordInfo.letterMask.getChars().length == 5) {
       // already got 5 letters
       strategy = MatchGuessStrategy;
-    } else if (remainWords.length <= 6 - trial + 1) {
+    } else if (this.remainWords.length <= 6 - trial + 1) {
       // got fews word candidates
       strategy = MatchGuessStrategy;
     } else if (trial == 2) {
       // 2nd trial && not enough letter info
-      strategy = wordInfo.letterMask.getChars().length < 4 ? AggressiveExpandCharGuessStrategy : ExpandCharGuessStrategy;
+      // if (wordInfo.letterMask.getChars().length < 4 && aggressiveCandidates.length > 0) {
+      //   strategy = AggressiveExpandCharGuessStrategy;
+      // } else {
+      //   strategy = DistinctCharGuessStrategy;
+      // }
+      strategy = DistinctCharGuessStrategy;
     } else if (trial == 3) {
-      // 3rd trial && not enough letter info
-      strategy = wordInfo.letterMask.getChars().length < 4 ? AggressiveExpandCharGuessStrategy : ExpandCharGuessStrategy;
-    } else if (trial == 4) {
-      // 4th trial
-      if (remainWords.length < 10) {
+      if (wordInfo.letterMask.getChars().length < 5) {
         strategy = DistinctCharGuessStrategy;
       } else {
-        strategy = wordInfo.letterMask.getChars().length < 4 ? AggressiveExpandCharGuessStrategy : DistinctCharGuessStrategy;
+        strategy = MatchGuessStrategy;
+      }
+    } else if (trial == 4) {
+      if (wordInfo.letterMask.getChars().length < 5) {
+        strategy = DistinctCharGuessStrategy;
+      } else {
+        strategy = MatchGuessStrategy;
       }
     } else if (trial == 5) {
-      // 5th trial
       strategy = DistinctCharGuessStrategy;
-    } else if (trial < 6 && wordInfo.letterMask.getChars().length <= 4 && remainWords.length >= 2) {
+    } else {
       strategy = MatchGuessStrategy;
     }
 
     guessWords = new strategy(this.dictionary, remainWordsScoreMap).suggestGuess(wordInfo);
     guessWord = guessWords[0];
 
-    if (!guessWord) {
+    if (!guessWord || this.guessRecords.map((_) => _.guess).includes(guessWord.word)) {
       strategy = MatchGuessStrategy;
       guessWords = new MatchGuessStrategy(this.dictionary, remainWordsScoreMap).suggestGuess(wordInfo);
       guessWord = guessWords[0];
     }
 
-    console.log(aggressiveCandidates.length, expandCandidates.length, matchCandidates.length);
-    console.log("first 10 remaining: " + matchCandidates.slice(0, 10));
+    // let logs = ""; //`${aggressiveCandidates.length} ${distinctCandidates.length} ${matchCandidates.length}\n`;
+    let logs = `${distinctCandidates.length} ${matchCandidates.length}\n`;
+    // let logs = "";
+    logs +=
+      "first 10 remaining: " +
+      matchCandidates
+        .slice(0, 10)
+        .map((_) => _.word)
+        .join(",") +
+      "\n";
     guessResult = await this.guessResultEvaluator.evaluateGuess(guessWord);
 
     return {
@@ -85,6 +101,7 @@ export class GuessEngine {
       strategy: strategy.strategyName,
       guess: guessWord.word,
       result: guessResult,
+      logs,
     };
   }
 
@@ -104,6 +121,7 @@ export class GuessEngine {
       this.guessRecords = preloadContext.guessRecords;
       wordInfo = preloadContext.wordInfo;
     } catch (e) {}
+    let logs = "";
 
     for (let i = nextTrial; i <= 6; i++) {
       const guessRecord = await this.runTrial(i, wordInfo);
@@ -122,17 +140,23 @@ export class GuessEngine {
         }
       }
 
+      logs += guessRecord.logs;
+
       //console.log(`t${guessRecord.trial} strategy: ${guessRecord.strategy.name}, guess: "${guessRecord.guess}", result: `, guessRecord.result);
-      console.log(
-        guessRecord,
-        `chars: ${wordInfo.letterMask.getChars()}, noChars: ${wordInfo.letterNotMask.getChars()}`,
+      logs +=
+        JSON.stringify(
+          { trial: guessRecord.trial, strategy: guessRecord.strategy, guess: guessRecord.guess, result: guessRecord.result.text },
+          null,
+          2
+        ) +
+        "\n" +
+        `chars: ${wordInfo.letterMask.getChars()}, noChars: ${wordInfo.letterNotMask.getChars()}\n` +
         `remaining: ${LetterFlagMask.charA2Z
           .split("")
           .filter((char) => !wordInfo.letterMask.getChars().includes(char) && !wordInfo.letterNotMask.getChars().includes(char))
-          .join("")}`
-      );
+          .join("")}`;
 
-      console.log("------------------");
+      logs += "\n------------------\n";
 
       if (guessRecord.result.success) {
         break;
@@ -141,11 +165,13 @@ export class GuessEngine {
 
     const lastGuessRecord = this.getLastGuessRecord();
     if (lastGuessRecord.result.success) {
-      console.log(`Bingo! Guess with ${lastGuessRecord.trial} times!`);
-      return true;
+      logs += `Bingo! Guess with ${lastGuessRecord.trial} times!`;
+      console.log(logs);
+      return { success: true, answer: this.guessResultEvaluator.answer()?.word, logs };
     } else {
-      console.log(`Failed to guess with 6 times! Answer is '${this.guessResultEvaluator.answer()?.word}'.`);
-      return false;
+      logs += `Failed to guess with 6 times! Answer is '${this.guessResultEvaluator.answer()?.word}'.`;
+      console.log(logs);
+      return { success: false, answer: this.guessResultEvaluator.answer()?.word, logs };
     }
   }
 
@@ -210,6 +236,7 @@ export class GuessEngine {
         strategy: "unknown",
         guess: guessWord.word,
         result,
+        logs: "",
       });
     }
 
@@ -221,4 +248,4 @@ export class GuessEngine {
   }
 }
 
-export type GuessRecord = { trial: number; strategy: string; guess: string; result: GuessResult };
+export type GuessRecord = { trial: number; strategy: string; guess: string; result: GuessResult; logs: string };

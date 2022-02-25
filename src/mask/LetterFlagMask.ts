@@ -22,14 +22,7 @@ export class LetterFlagMask extends FlagsBucket {
   }
 
   getChars(): string {
-    let chars = "";
-    for (let char of LetterFlagMask.charA2Z) {
-      const [i1, i2] = BitMasks.calFlagPos(0, char);
-      if (this.getBit(i1, i2)) {
-        chars += char;
-      }
-    }
-    return chars;
+    return Array.from(this.getCharSet()).join("");
   }
 
   getCharSet(): Set<string> {

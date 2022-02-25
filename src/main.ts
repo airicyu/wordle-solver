@@ -14,9 +14,9 @@ if (!globalThis.window) {
 (globalThis.window as any).GameInteraction = GameInteraction;
 GameInteraction.run();
 
-// const WORD_LENGTH = 5;
+const WORD_LENGTH = 5;
 
-// const dictionary5Letter = fullDictionaryWords.filter((_) => _.length === WORD_LENGTH).map((_) => new Word(_));
+const dictionary5Letter = fullDictionaryWords.filter((_) => _.length === WORD_LENGTH).map((_) => new Word(_));
 
 // let wordInfo = new WordInfo(
 //   WORD_LENGTH,
@@ -37,22 +37,22 @@ GameInteraction.run();
 // const guessEngine = new GuessEngine(dictionary5Letter, WORD_LENGTH, guessResultEvaluator);
 // guessEngine.run();
 
-// const challenges = ["water", "wooer", "jaunt", "catch", "taunt"].map((_) => new Word(_));
+// const challenges = ["water", "wooer", "jaunt", "catch", "taunt", "booby", "bobby", "retro"].map((_) => new Word(_));
+// // const challenges = ["staff"].map((_) => new Word(_));
+// // const challenges = dictionary5Letter;
 
+// let successCounter = 0;
 // for (let [i, word] of challenges.entries()) {
 //   const guessResultEvaluator = new DevGuessResultEvaluator(word);
 //   const guessEngine = new GuessEngine(dictionary5Letter, WORD_LENGTH, guessResultEvaluator);
-//   if (!guessEngine.run()) {
+//   console.log(i, word.word);
+//   const result = await guessEngine.run();
+//   if (!result.success) {
 //     console.log(`failed at ${i}`);
 //     break;
+//   } else {
+//     successCounter++;
 //   }
 // }
+// console.log(`${successCounter} over ${challenges.length} success. Success rate = ${((successCounter / challenges.length) * 100).toFixed(2)}%`);
 
-// for (let [i, word] of dictionary5Letter.entries()) {
-//   const guessResultEvaluator = new GuessResultEvaluator(word);
-//   const guessEngine = new GuessEngine(dictionary5Letter, WORD_LENGTH, guessResultEvaluator);
-//   if (!guessEngine.run()) {
-//     console.log(`failed at ${i}`);
-//     break;
-//   }
-// }

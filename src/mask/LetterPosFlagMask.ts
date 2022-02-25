@@ -3,6 +3,10 @@ import { BitMasks } from "./BitMasks.js";
 
 export class LetterPosFlagMask extends FlagsBucket {
   numLetters;
+  static charA2Z = "abcdefghijklmnopqrstuvwxyz";
+  static charA = "a".charCodeAt(0);
+  static charZ = "z".charCodeAt(0);
+
   _pos: number[] = [];
   constructor(numLetters: number) {
     super(Math.ceil((26 * numLetters) / 8), Math.ceil((26 * numLetters) / 8) * 8 - 26 * numLetters); // 17 = Math.ceil(26 * 5 / 8); 6 = 17 * 8 - 26 * 5
@@ -19,6 +23,24 @@ export class LetterPosFlagMask extends FlagsBucket {
       }
     }
     return this;
+  }
+
+  getChars(): string {
+    return Array.from(this.getCharSet()).join("");
+  }
+
+  getCharSet(): Set<string> {
+    let chars = new Set<string>();
+    for (let pos of this._pos) {
+      for (let char of LetterPosFlagMask.charA2Z) {
+        const [i1, i2] = BitMasks.calFlagPos(pos, char);
+        if (this.getBit(i1, i2)) {
+          chars.add(char);
+        }
+      }
+    }
+
+    return chars;
   }
 
   charAtPos(char: string, pos: number) {

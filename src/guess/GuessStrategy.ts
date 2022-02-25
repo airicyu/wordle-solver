@@ -76,7 +76,7 @@ export class AggressiveExpandCharGuessStrategy extends GuessStrategy {
       scoreMap[char] = 0;
     }
 
-    const wordScores = this.evaluateScore(filteredResult, scoreMap);
+    const wordScores = this.evaluateScore(filteredResult, scoreMap).filter((_) => _.score > 0);
     return wordScores.map((_) => _.word);
   }
 }
@@ -122,18 +122,59 @@ export class DistinctCharGuessStrategy extends GuessStrategy {
 
   suggestGuess(wordInfo: WordInfo) {
     const filteredResult = DictionaryFilter.filter(this.dictionary, wordInfo);
-    const scoreMap = JSON.parse(JSON.stringify(this.scoreMap));
+    const scoreMap = JSON.parse(JSON.stringify(this.scoreMap)) as Record<string, number>;
     for (const char of wordInfo.letterMask.getChars()) {
-      scoreMap[char] = 0;
+      if (wordInfo.letterNotPosMask.getCharSet().has(char)) {
+        scoreMap[char] = 0;
+      } else {
+        scoreMap[char] = 0;
+      }
     }
     for (const char of wordInfo.letterNotMask.getChars()) {
       scoreMap[char] = 0;
     }
 
-    const wordScores = this.evaluateScore(this.dictionary, scoreMap);
+    for (const [char, score] of Object.entries(scoreMap)) {
+      if (score === filteredResult.length) {
+        scoreMap[char] = 0;
+      }
+    }
+
+    // if (filteredResult.length < 4) {
+    //   for (const [char, score] of Object.entries(scoreMap)) {
+    //     if (scoreMap[char] != 0) {
+    //       scoreMap[char] = 1 / score;
+    //     }
+    //   }
+    // }
+
+    if (Object.values(scoreMap).filter((_) => _ != 0).length === 0) {
+      return [];
+    }
+
+    const wordScores = this.evaluateScore(this.dictionary, scoreMap).filter((_) => _.score > 0);
     return wordScores.map((_) => _.word);
   }
 }
+
+// export class SimulateGuessStrategy extends GuessStrategy {
+//   static strategyName = "simulate";
+//   trialChance : number
+
+//   constructor(trialChance: number, dictionary: Word[], scoreMap?: Record<string, number>) {
+//     super(dictionary, scoreMap);
+//     this.trialChance = trialChance
+//   }
+
+//   suggestGuess(wordInfo: WordInfo) {
+//     const filteredResult = DictionaryFilter.filter(this.dictionary, wordInfo);
+
+//     for(let simAns)
+
+//     const wordScores = this.evaluateScore(this.dictionary, scoreMap).filter((_) => _.score > 0);
+//     return wordScores.map((_) => _.word);
+//   }
+// }
 
 export class MatchGuessStrategy extends GuessStrategy {
   static strategyName = "match";
